@@ -22,4 +22,3 @@ export default function TestPage() {
 
     return <div>Supabase test page 👀 (check console)</div>;
 }
-}
