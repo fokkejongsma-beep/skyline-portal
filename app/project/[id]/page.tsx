@@ -22,6 +22,7 @@ export default function ProjectDetailPage() {
     const id = params.id as string;
 
     const [project, setProject] = useState<ProjectRow | null>(null);
+    const [payloadText, setPayloadText] = useState("");
     const [message, setMessage] = useState("Loading project...");
 
     useEffect(() => {
@@ -44,6 +45,7 @@ export default function ProjectDetailPage() {
             }
 
             setProject(data);
+            setPayloadText(JSON.stringify(data.payload, null, 2));
             setMessage("");
         };
 
@@ -51,6 +53,28 @@ export default function ProjectDetailPage() {
             loadProject();
         }
     }, [id]);
+
+    const savePayload = async () => {
+        if (!project) return;
+
+        try {
+            const parsed = JSON.parse(payloadText);
+
+            const { error } = await supabase
+                .from("projects")
+                .update({ payload: parsed })
+                .eq("id", project.id);
+
+            if (error) {
+                setMessage("Error saving: " + error.message);
+                return;
+            }
+
+            setMessage("Payload updated successfully.");
+        } catch (e) {
+            setMessage("Invalid JSON format.");
+        }
+    };
 
     if (!project) {
         return (
@@ -80,16 +104,28 @@ export default function ProjectDetailPage() {
 
             <div style={{ marginTop: 24 }}>
                 <h2>Payload</h2>
-                <pre
+                <textarea
+                    value={payloadText}
+                    onChange={(e) => setPayloadText(e.target.value)}
                     style={{
-                        background: "#f5f5f5",
-                        padding: 16,
+                        width: "100%",
+                        minHeight: 200,
+                        fontFamily: "monospace",
+                        padding: 12,
                         borderRadius: 8,
-                        overflowX: "auto",
+                        border: "1px solid #ccc",
                     }}
-                >
-                    {JSON.stringify(project.payload, null, 2)}
-                </pre>
+                />
+
+                <div style={{ marginTop: 12 }}>
+                    <button onClick={savePayload} style={{ padding: "10px 16px" }}>
+                        Save Payload
+                    </button>
+                </div>
+
+                {message && (
+                    <p style={{ marginTop: 12 }}>{message}</p>
+                )}
             </div>
         </main>
     );
