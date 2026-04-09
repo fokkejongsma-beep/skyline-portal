@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
@@ -23,6 +24,8 @@ export default function DashboardPage() {
     const [projectName, setProjectName] = useState("");
     const [message, setMessage] = useState("");
     const [projects, setProjects] = useState<ProjectRow[]>([]);
+
+    const router = useRouter();
 
     useEffect(() => {
         const loadUserAndProjects = async () => {
@@ -172,7 +175,7 @@ export default function DashboardPage() {
             </div>
 
             <div style={{ marginTop: 40 }}>
-                <h2>My Projects</h2>
+                <h2>{role === "admin" ? "All Projects" : "My Projects"}</h2>
 
                 {projects.length === 0 ? (
                     <p>No saved projects yet.</p>
@@ -181,10 +184,12 @@ export default function DashboardPage() {
                         {projects.map((project) => (
                             <div
                                 key={project.id}
+                                onClick={() => router.push(`/project/${project.id}`)}
                                 style={{
                                     border: "1px solid #ccc",
                                     borderRadius: 8,
                                     padding: 16,
+                                    cursor: "pointer",
                                 }}
                             >
                                 <strong>{project.name}</strong>
@@ -193,6 +198,9 @@ export default function DashboardPage() {
                                 </div>
                                 <div style={{ marginTop: 6, fontSize: 14, color: "#555" }}>
                                     Created: {new Date(project.created_at).toLocaleString()}
+                                </div>
+                                <div style={{ marginTop: 8, fontSize: 12, color: "#0066cc" }}>
+                                    Open project →
                                 </div>
                             </div>
                         ))}
