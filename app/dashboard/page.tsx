@@ -10,6 +10,7 @@ const supabase = createClient(
 
 type ProjectRow = {
     id: string;
+    user_id: string;
     name: string;
     payload: any;
     created_at: string;
@@ -38,8 +39,8 @@ export default function DashboardPage() {
 
             if (user?.id && user?.email) {
                 await ensureProfile(user.id, user.email);
-                await loadRole(user.id);
-                await loadProjects(user.id);
+                const roleValue = await loadRole(user.id);
+                await loadProjects(user.id, roleValue);
             }
         };
 
@@ -66,7 +67,7 @@ export default function DashboardPage() {
         }
     };
 
-    const loadRole = async (id: string) => {
+    const loadRole = async (id: string): Promise<string> => {
         const { data, error } = await supabase
             .from("profiles")
             .select("role")
@@ -75,18 +76,24 @@ export default function DashboardPage() {
 
         if (error) {
             console.error(error);
-            return;
+            return "user";
         }
 
-        setRole(data?.role ?? "user");
+        const r = data?.role ?? "user";
+        setRole(r);
+        return r;
     };
 
-    const loadProjects = async (uid: string) => {
-        const { data, error } = await supabase
-            .from("projects")
-            .select("*")
-            .eq("user_id", uid)
-            .order("created_at", { ascending: false });
+    const loadProjects = async (uid: string, roleArg: string) => {
+        let query = supabase.from("projects").select("*");
+
+        if (roleArg !== "admin") {
+            query = query.eq("user_id", uid);
+        }
+
+        const { data, error } = await query.order("created_at", {
+            ascending: false,
+        });
 
         if (error) {
             console.error(error);
@@ -129,7 +136,7 @@ export default function DashboardPage() {
 
         setMessage("Project saved successfully.");
         setProjectName("");
-        await loadProjects(userId);
+        await loadProjects(userId, role);
     };
 
     return (
@@ -181,6 +188,9 @@ export default function DashboardPage() {
                                 }}
                             >
                                 <strong>{project.name}</strong>
+                                <div style={{ fontSize: 12, color: "#777" }}>
+                                    User: {project.user_id}
+                                </div>
                                 <div style={{ marginTop: 6, fontSize: 14, color: "#555" }}>
                                     Created: {new Date(project.created_at).toLocaleString()}
                                 </div>
