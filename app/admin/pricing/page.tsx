@@ -61,9 +61,6 @@ export default function AdminPricingPage() {
         setSavingId(null);
     };
 
-    const [editingRates, setEditingRates] = useState<Record<string, number>>({});
-    const [savingId, setSavingId] = useState<string | null>(null);
-
     useEffect(() => {
         const loadData = async () => {
             const {
