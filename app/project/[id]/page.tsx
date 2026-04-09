@@ -45,6 +45,24 @@ type StructuredPayload = {
 };
 
 const DEFAULT_PAYLOAD_TEMPLATE: StructuredPayload = {
+    const PRICING_REFERENCE = [
+        { system: "SCT", mount: "surface", min_sqft: 0, max_sqft: 200, selected_rate: 105.8 },
+        { system: "SCT", mount: "surface", min_sqft: 200, max_sqft: 500, selected_rate: 70.3 },
+        { system: "SCT", mount: "surface", min_sqft: 500, max_sqft: 1000, selected_rate: 111.0 },
+        { system: "SCT", mount: "surface", min_sqft: 1000, max_sqft: 999999, selected_rate: 68.5 },
+        { system: "SCT", mount: "suspended", min_sqft: 0, max_sqft: 200, selected_rate: 174.0 },
+        { system: "SCT", mount: "suspended", min_sqft: 200, max_sqft: 500, selected_rate: 95.5 },
+        { system: "SCT", mount: "suspended", min_sqft: 500, max_sqft: 1000, selected_rate: 85.0 },
+        { system: "SCT", mount: "suspended", min_sqft: 1000, max_sqft: 999999, selected_rate: 62.8 },
+        { system: "TNW", mount: "surface", min_sqft: 0, max_sqft: 200, selected_rate: 113.5 },
+        { system: "TNW", mount: "surface", min_sqft: 200, max_sqft: 500, selected_rate: 76.0 },
+        { system: "TNW", mount: "surface", min_sqft: 500, max_sqft: 1000, selected_rate: 149.8 },
+        { system: "TNW", mount: "surface", min_sqft: 1000, max_sqft: 999999, selected_rate: 90.8 },
+        { system: "TNW", mount: "suspended", min_sqft: 0, max_sqft: 200, selected_rate: 177.0 },
+        { system: "TNW", mount: "suspended", min_sqft: 200, max_sqft: 500, selected_rate: 112.0 },
+        { system: "TNW", mount: "suspended", min_sqft: 500, max_sqft: 1000, selected_rate: 124.5 },
+        { system: "TNW", mount: "suspended", min_sqft: 1000, max_sqft: 999999, selected_rate: 83.0 },
+    ] as const;
     project: {
         oppy: "012345",
         area: "A1",
@@ -208,7 +226,17 @@ export default function ProjectDetailPage() {
         setMessage("Template loaded. Click Save Payload to store it.");
     };
 
-    const areaSqm = (Number(formData.layout.width) * Number(formData.layout.height)) / 1000000;
+    const width = Number(formData.layout.width) || 0;
+    const height = Number(formData.layout.height) || 0;
+
+    const areaSqft =
+        formData.project.units === "mm"
+            ? (width / 304.8) * (height / 304.8)
+            : formData.project.units === "inch"
+                ? (width / 12) * (height / 12)
+                : width * height;
+
+    const areaSqm = areaSqft / 10.7639;
 
     const textileLabel =
         formData.pricing.textile === "texture"
@@ -216,6 +244,30 @@ export default function ProjectDetailPage() {
             : formData.pricing.textile === "waffle"
                 ? "Waffle"
                 : "Standard";
+
+    const textileMultiplier =
+        formData.pricing.textile === "texture"
+            ? 1.05
+            : formData.pricing.textile === "waffle"
+                ? 1.13
+                : 1;
+
+    const mountKey = formData.layout.mountType.toLowerCase();
+
+    const matchedRate = PRICING_REFERENCE.find(
+        (row) =>
+            row.system === formData.layout.systemType &&
+            row.mount === mountKey &&
+            areaSqft >= row.min_sqft &&
+            areaSqft < row.max_sqft,
+    );
+
+    const baseRate = matchedRate?.selected_rate ?? null;
+    const illuminatedTotal = baseRate !== null ? areaSqft * baseRate * textileMultiplier : null;
+    const pricingNote =
+        formData.pricing.currency === "CAD"
+            ? "CAD selected. Uploaded pricing reference is USD-based; conversion is not configured yet."
+            : "";
 
     if (!project) {
         return (
@@ -248,7 +300,7 @@ export default function ProjectDetailPage() {
 
                 <div style={{ display: "grid", gap: 12, maxWidth: 520 }}>
                     <label>
-                        <div>OPPY</div>
+                        <div>OPPY Number</div>
                         <input
                             type="text"
                             value={formData.project.oppy}
@@ -263,7 +315,7 @@ export default function ProjectDetailPage() {
                     </label>
 
                     <label>
-                        <div>Area</div>
+                        <div>Area designation</div>
                         <input
                             type="text"
                             value={formData.project.area}
@@ -325,7 +377,7 @@ export default function ProjectDetailPage() {
                     </label>
 
                     <label>
-                        <div>Width</div>
+                        <div>Outer Length (L)</div>
                         <input
                             type="number"
                             value={formData.layout.width}
@@ -343,7 +395,7 @@ export default function ProjectDetailPage() {
                     </label>
 
                     <label>
-                        <div>Height</div>
+                        <div>Outer Width (W)</div>
                         <input
                             type="number"
                             value={formData.layout.height}
@@ -361,7 +413,7 @@ export default function ProjectDetailPage() {
                     </label>
 
                     <label>
-                        <div>Mount Type</div>
+                        <div>Mounting Type</div>
                         <select
                             value={formData.layout.mountType}
                             onChange={(e) =>
@@ -381,7 +433,7 @@ export default function ProjectDetailPage() {
                     </label>
 
                     <label>
-                        <div>System Type</div>
+                        <div>Lighting System - CCT</div>
                         <select
                             value={formData.layout.systemType}
                             onChange={(e) =>
@@ -401,7 +453,7 @@ export default function ProjectDetailPage() {
                     </label>
 
                     <label>
-                        <div>Output Type</div>
+                        <div>Lighting System - Output</div>
                         <select
                             value={formData.layout.outputType}
                             onChange={(e) =>
@@ -426,7 +478,7 @@ export default function ProjectDetailPage() {
                     </label>
 
                     <label>
-                        <div>Channel Profile</div>
+                        <div>Perimeter Channel</div>
                         <select
                             value={formData.layout.channelProfile}
                             onChange={(e) =>
@@ -502,12 +554,27 @@ export default function ProjectDetailPage() {
                     }}
                 >
                     <h3 style={{ marginTop: 0 }}>Pricing Preview</h3>
-                    <div>Area: {areaSqm.toFixed(2)} m²</div>
+                    <div>Outer area: {areaSqm.toFixed(2)} m²</div>
+                    <div>Outer area: {areaSqft.toFixed(2)} sqft</div>
                     <div>Textile: {textileLabel}</div>
-                    <div style={{ marginTop: 8, fontSize: 13, color: "#666" }}>
-                        This mirrors the desktop tool structure, but exact pricing parity still
-                        requires loading the pricing tables and calculation logic from the app.
-                    </div>
+                    <div>Lighting System - CCT: {formData.layout.systemType}</div>
+                    <div>Lighting System - Output: {formData.layout.outputType}</div>
+                    <div>Mounting Type: {formData.layout.mountType}</div>
+                    {baseRate !== null ? (
+                        <>
+                            <div>
+                                Base rate ({textileLabel}): {formData.pricing.currency} {baseRate.toFixed(2)} / sqft
+                            </div>
+                            <div>
+                                Illuminated total: {formData.pricing.currency} {illuminatedTotal?.toFixed(2)}
+                            </div>
+                        </>
+                    ) : (
+                        <div>No pricing reference found.</div>
+                    )}
+                    {pricingNote && (
+                        <div style={{ marginTop: 8, fontSize: 13, color: "#666" }}>{pricingNote}</div>
+                    )}
                 </div>
 
 
