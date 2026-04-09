@@ -71,30 +71,12 @@ const DEFAULT_PAYLOAD_TEMPLATE: StructuredPayload = {
     },
 };
 
-const PRICING_REFERENCE = [
-    { system: "SCT", mount: "surface", min_sqft: 0, max_sqft: 200, selected_rate: 105.8 },
-    { system: "SCT", mount: "surface", min_sqft: 200, max_sqft: 500, selected_rate: 70.3 },
-    { system: "SCT", mount: "surface", min_sqft: 500, max_sqft: 1000, selected_rate: 111.0 },
-    { system: "SCT", mount: "surface", min_sqft: 1000, max_sqft: 999999, selected_rate: 68.5 },
-    { system: "SCT", mount: "suspended", min_sqft: 0, max_sqft: 200, selected_rate: 174.0 },
-    { system: "SCT", mount: "suspended", min_sqft: 200, max_sqft: 500, selected_rate: 95.5 },
-    { system: "SCT", mount: "suspended", min_sqft: 500, max_sqft: 1000, selected_rate: 85.0 },
-    { system: "SCT", mount: "suspended", min_sqft: 1000, max_sqft: 999999, selected_rate: 62.8 },
-    { system: "TNW", mount: "surface", min_sqft: 0, max_sqft: 200, selected_rate: 113.5 },
-    { system: "TNW", mount: "surface", min_sqft: 200, max_sqft: 500, selected_rate: 76.0 },
-    { system: "TNW", mount: "surface", min_sqft: 500, max_sqft: 1000, selected_rate: 149.8 },
-    { system: "TNW", mount: "surface", min_sqft: 1000, max_sqft: 999999, selected_rate: 90.8 },
-    { system: "TNW", mount: "suspended", min_sqft: 0, max_sqft: 200, selected_rate: 177.0 },
-    { system: "TNW", mount: "suspended", min_sqft: 200, max_sqft: 500, selected_rate: 112.0 },
-    { system: "TNW", mount: "suspended", min_sqft: 500, max_sqft: 1000, selected_rate: 124.5 },
-    { system: "TNW", mount: "suspended", min_sqft: 1000, max_sqft: 999999, selected_rate: 83.0 },
-] as const;
-
 export default function ProjectDetailPage() {
     const params = useParams();
     const id = params.id as string;
 
     const [project, setProject] = useState<ProjectRow | null>(null);
+    const [pricingReference, setPricingReference] = useState<any[]>([]);
     const [formData, setFormData] = useState<StructuredPayload>(DEFAULT_PAYLOAD_TEMPLATE);
     const [message, setMessage] = useState("Loading project...");
 
@@ -170,6 +152,23 @@ export default function ProjectDetailPage() {
             loadProject();
         }
     }, [id]);
+
+    useEffect(() => {
+        const loadPricing = async () => {
+            const { data, error } = await supabase
+                .from("pricing_reference")
+                .select("system, mount, min_sqft, max_sqft, selected_rate");
+
+            if (error) {
+                console.error("Error loading pricing reference:", error);
+                return;
+            }
+
+            setPricingReference(data || []);
+        };
+
+        loadPricing();
+    }, []);
 
     const savePayload = async () => {
         if (!project) return;
@@ -255,7 +254,7 @@ export default function ProjectDetailPage() {
 
     const mountKey = formData.layout.mountType.toLowerCase();
 
-    const matchedRate = PRICING_REFERENCE.find(
+    const matchedRate = pricingReference.find(
         (row) =>
             row.system === formData.layout.systemType &&
             row.mount === mountKey &&
