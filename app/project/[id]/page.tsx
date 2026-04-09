@@ -94,6 +94,23 @@ export default function ProjectDetailPage() {
     const [project, setProject] = useState<ProjectRow | null>(null);
     const [pricingReference, setPricingReference] = useState<any[]>([]);
     const [jointPricing, setJointPricing] = useState<any[]>([]);
+    const [elementPricing, setElementPricing] = useState<any[]>([]);
+    useEffect(() => {
+        const loadElementPricing = async () => {
+            const { data, error } = await supabase
+                .from("element_pricing")
+                .select("element_type, description, price_basis, unit_price, min_length_mm, max_length_mm, increment_mm");
+
+            if (error) {
+                console.error("Error loading element pricing:", error);
+                return;
+            }
+
+            setElementPricing(data || []);
+        };
+
+        loadElementPricing();
+    }, []);
     const [formData, setFormData] = useState<StructuredPayload>(DEFAULT_PAYLOAD_TEMPLATE);
     const [message, setMessage] = useState("Loading project...");
 
@@ -380,7 +397,56 @@ export default function ProjectDetailPage() {
         });
 
     const jointTotal = jointBreakdown.reduce((sum, item) => sum + item.total, 0);
-    const grandTotal = (illuminatedTotal || 0) + jointTotal;
+
+    const elementPriceMap = Object.fromEntries(
+        elementPricing.map((row) => [row.element_type, row]),
+    ) as Record<string, any>;
+
+    const elementCounts = [
+        {
+            key: "track",
+            label: "Track",
+            count: Array.isArray(formData.lighting.track) ? formData.lighting.track.length : 0,
+            lengthMm: 0,
+        },
+        {
+            key: "downlights",
+            label: "Downlights",
+            count: Array.isArray(formData.lighting.downlights)
+                ? formData.lighting.downlights.length
+                : 0,
+            lengthMm: 0,
+        },
+        {
+            key: "furtivo",
+            label: "Furtivo",
+            count: Array.isArray(formData.lighting.furtivo) ? formData.lighting.furtivo.length : 0,
+            lengthMm: 0,
+        },
+    ];
+
+    const elementBreakdown = elementCounts
+        .filter((item) => item.count > 0)
+        .map((item) => {
+            const pricingRow = elementPriceMap[item.key];
+            const unitPrice = pricingRow ? Number(pricingRow.unit_price) || 0 : 0;
+            const priceBasis = pricingRow?.price_basis || "each";
+
+            const total =
+                priceBasis === "length_mm"
+                    ? (item.lengthMm / 1000) * unitPrice
+                    : item.count * unitPrice;
+
+            return {
+                ...item,
+                unitPrice,
+                priceBasis,
+                total,
+            };
+        });
+
+    const elementTotal = elementBreakdown.reduce((sum, item) => sum + item.total, 0);
+    const grandTotal = (illuminatedTotal || 0) + jointTotal + elementTotal;
 
     if (!project) {
         return (
@@ -810,13 +876,32 @@ export default function ProjectDetailPage() {
                                         Joint total: {formData.pricing.currency}{" "}
                                         {jointTotal.toFixed(2)}
                                     </div>
+                                </>
+                            ) : (
+                                <div>No prefab joints counted.</div>
+                            )}
+
+                            <div style={{ marginTop: 12, fontWeight: 600 }}>Element Pricing</div>
+                            {elementBreakdown.length > 0 ? (
+                                <>
+                                    {elementBreakdown.map((item) => (
+                                        <div key={item.key}>
+                                            {item.label}: {item.count} × {formData.pricing.currency}{" "}
+                                            {item.unitPrice.toFixed(2)} = {formData.pricing.currency}{" "}
+                                            {item.total.toFixed(2)}
+                                        </div>
+                                    ))}
+                                    <div style={{ marginTop: 6 }}>
+                                        Element total: {formData.pricing.currency}{" "}
+                                        {elementTotal.toFixed(2)}
+                                    </div>
                                     <div style={{ marginTop: 6, fontWeight: 600 }}>
                                         Grand total: {formData.pricing.currency}{" "}
                                         {grandTotal.toFixed(2)}
                                     </div>
                                 </>
                             ) : (
-                                <div>No prefab joints counted.</div>
+                                <div>No priced lighting elements counted.</div>
                             )}
                         </>
                     ) : (
