@@ -17,6 +17,9 @@ export default function AdminPricingPage() {
     const [jointPricing, setJointPricing] = useState<any[]>([]);
     const [elementPricing, setElementPricing] = useState<any[]>([]);
 
+    const [editingRates, setEditingRates] = useState<Record<string, number>>({});
+    const [savingId, setSavingId] = useState<string | null>(null);
+
     useEffect(() => {
         const loadData = async () => {
             const {
@@ -59,6 +62,26 @@ export default function AdminPricingPage() {
         loadData();
     }, []);
 
+    const updateRate = async (id: string) => {
+        const newRate = editingRates[id];
+        if (newRate === undefined) return;
+
+        setSavingId(id);
+
+        await supabase
+            .from("pricing_reference")
+            .update({ selected_rate: newRate })
+            .eq("id", id);
+
+        setPricingReference((prev) =>
+            prev.map((row) =>
+                row.id === id ? { ...row, selected_rate: newRate } : row
+            )
+        );
+
+        setSavingId(null);
+    };
+
     if (loading) return <div style={{ padding: 20 }}>Loading...</div>;
 
     if (!isAdmin)
@@ -85,11 +108,48 @@ export default function AdminPricingPage() {
             {/* Pricing Reference */}
             <section style={{ marginTop: 30 }}>
                 <h2>Pricing Reference</h2>
-                {pricingReference.map((row) => (
-                    <div key={row.id} style={{ padding: 8, borderBottom: "1px solid #eee" }}>
-                        {row.system} / {row.mount} | {row.min_sqft}–{row.max_sqft} sqft → ${row.selected_rate}
-                    </div>
-                ))}
+                {pricingReference.map((row) => {
+                    const currentValue =
+                        editingRates[row.id] !== undefined
+                            ? editingRates[row.id]
+                            : row.selected_rate;
+
+                    return (
+                        <div
+                            key={row.id}
+                            style={{
+                                padding: 8,
+                                borderBottom: "1px solid #eee",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 10,
+                            }}
+                        >
+                            <div style={{ flex: 1 }}>
+                                {row.system} / {row.mount} | {row.min_sqft}–{row.max_sqft} sqft
+                            </div>
+
+                            <input
+                                type="number"
+                                value={currentValue}
+                                onChange={(e) =>
+                                    setEditingRates((prev) => ({
+                                        ...prev,
+                                        [row.id]: Number(e.target.value),
+                                    }))
+                                }
+                                style={{ width: 100 }}
+                            />
+
+                            <button
+                                onClick={() => updateRate(row.id)}
+                                disabled={savingId === row.id}
+                            >
+                                {savingId === row.id ? "Saving..." : "Save"}
+                            </button>
+                        </div>
+                    );
+                })}
             </section>
 
             {/* Joint Pricing */}
