@@ -45,24 +45,6 @@ type StructuredPayload = {
 };
 
 const DEFAULT_PAYLOAD_TEMPLATE: StructuredPayload = {
-    const PRICING_REFERENCE = [
-        { system: "SCT", mount: "surface", min_sqft: 0, max_sqft: 200, selected_rate: 105.8 },
-        { system: "SCT", mount: "surface", min_sqft: 200, max_sqft: 500, selected_rate: 70.3 },
-        { system: "SCT", mount: "surface", min_sqft: 500, max_sqft: 1000, selected_rate: 111.0 },
-        { system: "SCT", mount: "surface", min_sqft: 1000, max_sqft: 999999, selected_rate: 68.5 },
-        { system: "SCT", mount: "suspended", min_sqft: 0, max_sqft: 200, selected_rate: 174.0 },
-        { system: "SCT", mount: "suspended", min_sqft: 200, max_sqft: 500, selected_rate: 95.5 },
-        { system: "SCT", mount: "suspended", min_sqft: 500, max_sqft: 1000, selected_rate: 85.0 },
-        { system: "SCT", mount: "suspended", min_sqft: 1000, max_sqft: 999999, selected_rate: 62.8 },
-        { system: "TNW", mount: "surface", min_sqft: 0, max_sqft: 200, selected_rate: 113.5 },
-        { system: "TNW", mount: "surface", min_sqft: 200, max_sqft: 500, selected_rate: 76.0 },
-        { system: "TNW", mount: "surface", min_sqft: 500, max_sqft: 1000, selected_rate: 149.8 },
-        { system: "TNW", mount: "surface", min_sqft: 1000, max_sqft: 999999, selected_rate: 90.8 },
-        { system: "TNW", mount: "suspended", min_sqft: 0, max_sqft: 200, selected_rate: 177.0 },
-        { system: "TNW", mount: "suspended", min_sqft: 200, max_sqft: 500, selected_rate: 112.0 },
-        { system: "TNW", mount: "suspended", min_sqft: 500, max_sqft: 1000, selected_rate: 124.5 },
-        { system: "TNW", mount: "suspended", min_sqft: 1000, max_sqft: 999999, selected_rate: 83.0 },
-    ] as const;
     project: {
         oppy: "012345",
         area: "A1",
@@ -88,6 +70,25 @@ const DEFAULT_PAYLOAD_TEMPLATE: StructuredPayload = {
         currency: "USD",
     },
 };
+
+const PRICING_REFERENCE = [
+    { system: "SCT", mount: "surface", min_sqft: 0, max_sqft: 200, selected_rate: 105.8 },
+    { system: "SCT", mount: "surface", min_sqft: 200, max_sqft: 500, selected_rate: 70.3 },
+    { system: "SCT", mount: "surface", min_sqft: 500, max_sqft: 1000, selected_rate: 111.0 },
+    { system: "SCT", mount: "surface", min_sqft: 1000, max_sqft: 999999, selected_rate: 68.5 },
+    { system: "SCT", mount: "suspended", min_sqft: 0, max_sqft: 200, selected_rate: 174.0 },
+    { system: "SCT", mount: "suspended", min_sqft: 200, max_sqft: 500, selected_rate: 95.5 },
+    { system: "SCT", mount: "suspended", min_sqft: 500, max_sqft: 1000, selected_rate: 85.0 },
+    { system: "SCT", mount: "suspended", min_sqft: 1000, max_sqft: 999999, selected_rate: 62.8 },
+    { system: "TNW", mount: "surface", min_sqft: 0, max_sqft: 200, selected_rate: 113.5 },
+    { system: "TNW", mount: "surface", min_sqft: 200, max_sqft: 500, selected_rate: 76.0 },
+    { system: "TNW", mount: "surface", min_sqft: 500, max_sqft: 1000, selected_rate: 149.8 },
+    { system: "TNW", mount: "surface", min_sqft: 1000, max_sqft: 999999, selected_rate: 90.8 },
+    { system: "TNW", mount: "suspended", min_sqft: 0, max_sqft: 200, selected_rate: 177.0 },
+    { system: "TNW", mount: "suspended", min_sqft: 200, max_sqft: 500, selected_rate: 112.0 },
+    { system: "TNW", mount: "suspended", min_sqft: 500, max_sqft: 1000, selected_rate: 124.5 },
+    { system: "TNW", mount: "suspended", min_sqft: 1000, max_sqft: 999999, selected_rate: 83.0 },
+] as const;
 
 export default function ProjectDetailPage() {
     const params = useParams();
