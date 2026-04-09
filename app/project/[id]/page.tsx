@@ -33,6 +33,14 @@ type StructuredPayload = {
         channelProfile: string;
         elements: any[];
     };
+    joints: {
+        corner_narrow: number;
+        corner_wide: number;
+        t_narrow: number;
+        t_wide: number;
+        x_narrow: number;
+        x_wide: number;
+    };
     lighting: {
         downlights: any[];
         track: any[];
@@ -60,6 +68,14 @@ const DEFAULT_PAYLOAD_TEMPLATE: StructuredPayload = {
         channelProfile: "Wide",
         elements: [],
     },
+    joints: {
+        corner_narrow: 4,
+        corner_wide: 0,
+        t_narrow: 0,
+        t_wide: 0,
+        x_narrow: 0,
+        x_wide: 0,
+    },
     lighting: {
         downlights: [],
         track: [],
@@ -77,6 +93,7 @@ export default function ProjectDetailPage() {
 
     const [project, setProject] = useState<ProjectRow | null>(null);
     const [pricingReference, setPricingReference] = useState<any[]>([]);
+    const [jointPricing, setJointPricing] = useState<any[]>([]);
     const [formData, setFormData] = useState<StructuredPayload>(DEFAULT_PAYLOAD_TEMPLATE);
     const [message, setMessage] = useState("Loading project...");
 
@@ -128,6 +145,26 @@ export default function ProjectDetailPage() {
                     elements:
                         data.payload?.layout?.elements ?? DEFAULT_PAYLOAD_TEMPLATE.layout.elements,
                 },
+                joints: {
+                    corner_narrow:
+                        data.payload?.joints?.corner_narrow ??
+                        DEFAULT_PAYLOAD_TEMPLATE.joints.corner_narrow,
+                    corner_wide:
+                        data.payload?.joints?.corner_wide ??
+                        DEFAULT_PAYLOAD_TEMPLATE.joints.corner_wide,
+                    t_narrow:
+                        data.payload?.joints?.t_narrow ??
+                        DEFAULT_PAYLOAD_TEMPLATE.joints.t_narrow,
+                    t_wide:
+                        data.payload?.joints?.t_wide ??
+                        DEFAULT_PAYLOAD_TEMPLATE.joints.t_wide,
+                    x_narrow:
+                        data.payload?.joints?.x_narrow ??
+                        DEFAULT_PAYLOAD_TEMPLATE.joints.x_narrow,
+                    x_wide:
+                        data.payload?.joints?.x_wide ??
+                        DEFAULT_PAYLOAD_TEMPLATE.joints.x_wide,
+                },
                 lighting: {
                     downlights:
                         data.payload?.lighting?.downlights ??
@@ -170,6 +207,23 @@ export default function ProjectDetailPage() {
         loadPricing();
     }, []);
 
+    useEffect(() => {
+        const loadJointPricing = async () => {
+            const { data, error } = await supabase
+                .from("joint_pricing")
+                .select("joint_type, description, unit_price");
+
+            if (error) {
+                console.error("Error loading joint pricing:", error);
+                return;
+            }
+
+            setJointPricing(data || []);
+        };
+
+        loadJointPricing();
+    }, []);
+
     const savePayload = async () => {
         if (!project) return;
 
@@ -188,6 +242,14 @@ export default function ProjectDetailPage() {
                 outputType: formData.layout.outputType,
                 channelProfile: formData.layout.channelProfile,
                 elements: formData.layout.elements,
+            },
+            joints: {
+                corner_narrow: Number(formData.joints.corner_narrow),
+                corner_wide: Number(formData.joints.corner_wide),
+                t_narrow: Number(formData.joints.t_narrow),
+                t_wide: Number(formData.joints.t_wide),
+                x_narrow: Number(formData.joints.x_narrow),
+                x_wide: Number(formData.joints.x_wide),
             },
             lighting: {
                 downlights: formData.lighting.downlights,
@@ -269,6 +331,57 @@ export default function ProjectDetailPage() {
             ? "CAD selected. Uploaded pricing reference is USD-based; conversion is not configured yet."
             : "";
 
+    const jointPriceMap = Object.fromEntries(
+        jointPricing.map((row) => [row.joint_type, Number(row.unit_price) || 0]),
+    ) as Record<string, number>;
+
+    const jointCounts = [
+        {
+            key: "corner_narrow",
+            label: "Corner Joint Narrow",
+            count: Number(formData.joints.corner_narrow) || 0,
+        },
+        {
+            key: "corner_wide",
+            label: "Corner Joint Wide",
+            count: Number(formData.joints.corner_wide) || 0,
+        },
+        {
+            key: "t_narrow",
+            label: "T Joint Narrow",
+            count: Number(formData.joints.t_narrow) || 0,
+        },
+        {
+            key: "t_wide",
+            label: "T Joint Wide",
+            count: Number(formData.joints.t_wide) || 0,
+        },
+        {
+            key: "x_narrow",
+            label: "X Joint Narrow",
+            count: Number(formData.joints.x_narrow) || 0,
+        },
+        {
+            key: "x_wide",
+            label: "X Joint Wide",
+            count: Number(formData.joints.x_wide) || 0,
+        },
+    ];
+
+    const jointBreakdown = jointCounts
+        .filter((item) => item.count > 0)
+        .map((item) => {
+            const unitPrice = jointPriceMap[item.key] || 0;
+            return {
+                ...item,
+                unitPrice,
+                total: item.count * unitPrice,
+            };
+        });
+
+    const jointTotal = jointBreakdown.reduce((sum, item) => sum + item.total, 0);
+    const grandTotal = (illuminatedTotal || 0) + jointTotal;
+
     if (!project) {
         return (
             <main style={{ padding: 40, fontFamily: "Arial, sans-serif" }}>
@@ -291,8 +404,7 @@ export default function ProjectDetailPage() {
             </p>
 
             <p>
-                <strong>Created:</strong>{" "}
-                {new Date(project.created_at).toLocaleString()}
+                <strong>Created:</strong> {new Date(project.created_at).toLocaleString()}
             </p>
 
             <div style={{ marginTop: 24 }}>
@@ -534,6 +646,119 @@ export default function ProjectDetailPage() {
                     </label>
                 </div>
 
+                <div style={{ marginTop: 24, maxWidth: 520 }}>
+                    <h3>Prefab Joints</h3>
+                    <div style={{ display: "grid", gap: 12 }}>
+                        <label>
+                            <div>Corner Joint Narrow</div>
+                            <input
+                                type="number"
+                                value={formData.joints.corner_narrow}
+                                onChange={(e) =>
+                                    setFormData({
+                                        ...formData,
+                                        joints: {
+                                            ...formData.joints,
+                                            corner_narrow: Number(e.target.value),
+                                        },
+                                    })
+                                }
+                                style={{ width: "100%", padding: 10 }}
+                            />
+                        </label>
+
+                        <label>
+                            <div>Corner Joint Wide</div>
+                            <input
+                                type="number"
+                                value={formData.joints.corner_wide}
+                                onChange={(e) =>
+                                    setFormData({
+                                        ...formData,
+                                        joints: {
+                                            ...formData.joints,
+                                            corner_wide: Number(e.target.value),
+                                        },
+                                    })
+                                }
+                                style={{ width: "100%", padding: 10 }}
+                            />
+                        </label>
+
+                        <label>
+                            <div>T Joint Narrow</div>
+                            <input
+                                type="number"
+                                value={formData.joints.t_narrow}
+                                onChange={(e) =>
+                                    setFormData({
+                                        ...formData,
+                                        joints: {
+                                            ...formData.joints,
+                                            t_narrow: Number(e.target.value),
+                                        },
+                                    })
+                                }
+                                style={{ width: "100%", padding: 10 }}
+                            />
+                        </label>
+
+                        <label>
+                            <div>T Joint Wide</div>
+                            <input
+                                type="number"
+                                value={formData.joints.t_wide}
+                                onChange={(e) =>
+                                    setFormData({
+                                        ...formData,
+                                        joints: {
+                                            ...formData.joints,
+                                            t_wide: Number(e.target.value),
+                                        },
+                                    })
+                                }
+                                style={{ width: "100%", padding: 10 }}
+                            />
+                        </label>
+
+                        <label>
+                            <div>X Joint Narrow</div>
+                            <input
+                                type="number"
+                                value={formData.joints.x_narrow}
+                                onChange={(e) =>
+                                    setFormData({
+                                        ...formData,
+                                        joints: {
+                                            ...formData.joints,
+                                            x_narrow: Number(e.target.value),
+                                        },
+                                    })
+                                }
+                                style={{ width: "100%", padding: 10 }}
+                            />
+                        </label>
+
+                        <label>
+                            <div>X Joint Wide</div>
+                            <input
+                                type="number"
+                                value={formData.joints.x_wide}
+                                onChange={(e) =>
+                                    setFormData({
+                                        ...formData,
+                                        joints: {
+                                            ...formData.joints,
+                                            x_wide: Number(e.target.value),
+                                        },
+                                    })
+                                }
+                                style={{ width: "100%", padding: 10 }}
+                            />
+                        </label>
+                    </div>
+                </div>
+
                 <div style={{ marginTop: 16, display: "flex", gap: 12 }}>
                     <button onClick={savePayload} style={{ padding: "10px 16px" }}>
                         Save Payload
@@ -563,20 +788,46 @@ export default function ProjectDetailPage() {
                     {baseRate !== null ? (
                         <>
                             <div>
-                                Base rate ({textileLabel}): {formData.pricing.currency} {baseRate.toFixed(2)} / sqft
+                                Base rate ({textileLabel}): {formData.pricing.currency}{" "}
+                                {baseRate.toFixed(2)} / sqft
                             </div>
                             <div>
-                                Illuminated total: {formData.pricing.currency} {illuminatedTotal?.toFixed(2)}
+                                Illuminated total: {formData.pricing.currency}{" "}
+                                {illuminatedTotal?.toFixed(2)}
                             </div>
+
+                            <div style={{ marginTop: 12, fontWeight: 600 }}>Joint Pricing</div>
+                            {jointBreakdown.length > 0 ? (
+                                <>
+                                    {jointBreakdown.map((item) => (
+                                        <div key={item.key}>
+                                            {item.label}: {item.count} × {formData.pricing.currency}{" "}
+                                            {item.unitPrice.toFixed(2)} = {formData.pricing.currency}{" "}
+                                            {item.total.toFixed(2)}
+                                        </div>
+                                    ))}
+                                    <div style={{ marginTop: 6 }}>
+                                        Joint total: {formData.pricing.currency}{" "}
+                                        {jointTotal.toFixed(2)}
+                                    </div>
+                                    <div style={{ marginTop: 6, fontWeight: 600 }}>
+                                        Grand total: {formData.pricing.currency}{" "}
+                                        {grandTotal.toFixed(2)}
+                                    </div>
+                                </>
+                            ) : (
+                                <div>No prefab joints counted.</div>
+                            )}
                         </>
                     ) : (
                         <div>No pricing reference found.</div>
                     )}
                     {pricingNote && (
-                        <div style={{ marginTop: 8, fontSize: 13, color: "#666" }}>{pricingNote}</div>
+                        <div style={{ marginTop: 8, fontSize: 13, color: "#666" }}>
+                            {pricingNote}
+                        </div>
                     )}
                 </div>
-
 
                 {message && <p style={{ marginTop: 12 }}>{message}</p>}
             </div>
