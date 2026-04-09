@@ -19,6 +19,50 @@ export default function AdminPricingPage() {
 
     const [editingRates, setEditingRates] = useState<Record<string, number>>({});
     const [savingId, setSavingId] = useState<string | null>(null);
+    const [editingJointRates, setEditingJointRates] = useState<Record<string, number>>({});
+    const [editingElementRates, setEditingElementRates] = useState<Record<string, number>>({});
+    const updateJointRate = async (id: string) => {
+        const newRate = editingJointRates[id];
+        if (newRate === undefined) return;
+
+        setSavingId(id);
+
+        await supabase
+            .from("joint_pricing")
+            .update({ unit_price: newRate })
+            .eq("id", id);
+
+        setJointPricing((prev) =>
+            prev.map((row) =>
+                row.id === id ? { ...row, unit_price: newRate } : row
+            )
+        );
+
+        setSavingId(null);
+    };
+
+    const updateElementRate = async (id: string) => {
+        const newRate = editingElementRates[id];
+        if (newRate === undefined) return;
+
+        setSavingId(id);
+
+        await supabase
+            .from("element_pricing")
+            .update({ unit_price: newRate })
+            .eq("id", id);
+
+        setElementPricing((prev) =>
+            prev.map((row) =>
+                row.id === id ? { ...row, unit_price: newRate } : row
+            )
+        );
+
+        setSavingId(null);
+    };
+
+    const [editingRates, setEditingRates] = useState<Record<string, number>>({});
+    const [savingId, setSavingId] = useState<string | null>(null);
 
     useEffect(() => {
         const loadData = async () => {
@@ -155,21 +199,97 @@ export default function AdminPricingPage() {
             {/* Joint Pricing */}
             <section style={{ marginTop: 30 }}>
                 <h2>Joint Pricing</h2>
-                {jointPricing.map((row) => (
-                    <div key={row.id} style={{ padding: 8, borderBottom: "1px solid #eee" }}>
-                        {row.joint_type} – {row.description} → ${row.unit_price}
-                    </div>
-                ))}
+                {jointPricing.map((row) => {
+                    const currentValue =
+                        editingJointRates[row.id] !== undefined
+                            ? editingJointRates[row.id]
+                            : row.unit_price;
+
+                    return (
+                        <div
+                            key={row.id}
+                            style={{
+                                padding: 8,
+                                borderBottom: "1px solid #eee",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 10,
+                            }}
+                        >
+                            <div style={{ flex: 1 }}>
+                                {row.joint_type} – {row.description}
+                            </div>
+
+                            <input
+                                type="number"
+                                step="0.01"
+                                value={currentValue}
+                                onChange={(e) =>
+                                    setEditingJointRates((prev) => ({
+                                        ...prev,
+                                        [row.id]: Number(e.target.value),
+                                    }))
+                                }
+                                style={{ width: 100 }}
+                            />
+
+                            <button
+                                onClick={() => updateJointRate(row.id)}
+                                disabled={savingId === row.id}
+                            >
+                                {savingId === row.id ? "Saving..." : "Save"}
+                            </button>
+                        </div>
+                    );
+                })}
             </section>
 
             {/* Element Pricing */}
             <section style={{ marginTop: 30 }}>
                 <h2>Element Pricing</h2>
-                {elementPricing.map((row) => (
-                    <div key={row.id} style={{ padding: 8, borderBottom: "1px solid #eee" }}>
-                        {row.element_type} ({row.price_basis}) → ${row.unit_price}
-                    </div>
-                ))}
+                {elementPricing.map((row) => {
+                    const currentValue =
+                        editingElementRates[row.id] !== undefined
+                            ? editingElementRates[row.id]
+                            : row.unit_price;
+
+                    return (
+                        <div
+                            key={row.id}
+                            style={{
+                                padding: 8,
+                                borderBottom: "1px solid #eee",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 10,
+                            }}
+                        >
+                            <div style={{ flex: 1 }}>
+                                {row.element_type} ({row.price_basis})
+                            </div>
+
+                            <input
+                                type="number"
+                                step="0.01"
+                                value={currentValue}
+                                onChange={(e) =>
+                                    setEditingElementRates((prev) => ({
+                                        ...prev,
+                                        [row.id]: Number(e.target.value),
+                                    }))
+                                }
+                                style={{ width: 100 }}
+                            />
+
+                            <button
+                                onClick={() => updateElementRate(row.id)}
+                                disabled={savingId === row.id}
+                            >
+                                {savingId === row.id ? "Saving..." : "Save"}
+                            </button>
+                        </div>
+                    );
+                })}
             </section>
         </div>
     );
