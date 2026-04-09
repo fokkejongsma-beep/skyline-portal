@@ -18,6 +18,7 @@ type ProjectRow = {
 export default function DashboardPage() {
     const [email, setEmail] = useState<string | null>(null);
     const [userId, setUserId] = useState<string | null>(null);
+    const [role, setRole] = useState<string>("user");
     const [projectName, setProjectName] = useState("");
     const [message, setMessage] = useState("");
     const [projects, setProjects] = useState<ProjectRow[]>([]);
@@ -35,13 +36,50 @@ export default function DashboardPage() {
             setEmail(user?.email ?? null);
             setUserId(user?.id ?? null);
 
-            if (user?.id) {
+            if (user?.id && user?.email) {
+                await ensureProfile(user.id, user.email);
+                await loadRole(user.id);
                 await loadProjects(user.id);
             }
         };
 
         loadUserAndProjects();
     }, []);
+
+    const ensureProfile = async (id: string, email: string) => {
+        const { data: existing } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("id", id)
+            .maybeSingle();
+
+        if (!existing) {
+            const { error } = await supabase.from("profiles").insert({
+                id,
+                email,
+                role: "user",
+            });
+
+            if (error) {
+                console.error("Error creating profile:", error);
+            }
+        }
+    };
+
+    const loadRole = async (id: string) => {
+        const { data, error } = await supabase
+            .from("profiles")
+            .select("role")
+            .eq("id", id)
+            .maybeSingle();
+
+        if (error) {
+            console.error(error);
+            return;
+        }
+
+        setRole(data?.role ?? "user");
+    };
 
     const loadProjects = async (uid: string) => {
         const { data, error } = await supabase
@@ -98,6 +136,13 @@ export default function DashboardPage() {
         <main style={{ padding: 40, fontFamily: "Arial, sans-serif" }}>
             <h1>Dashboard</h1>
             <p>{email ? `Logged in as: ${email}` : "Not logged in"}</p>
+            <p>Role: {role}</p>
+
+            {role === "admin" && (
+                <p style={{ color: "darkgreen", fontWeight: 600 }}>
+                    Admin access enabled
+                </p>
+            )}
 
             <div style={{ marginTop: 30 }}>
                 <h2>Save Project</h2>
