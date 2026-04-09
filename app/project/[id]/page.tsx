@@ -22,10 +22,15 @@ type StructuredPayload = {
         oppy: string;
         area: string;
         revision: string;
+        units: "mm" | "inch";
     };
     layout: {
         width: number;
         height: number;
+        mountType: string;
+        systemType: string;
+        outputType: string;
+        channelProfile: string;
         elements: any[];
     };
     lighting: {
@@ -44,10 +49,15 @@ const DEFAULT_PAYLOAD_TEMPLATE: StructuredPayload = {
         oppy: "012345",
         area: "A1",
         revision: "R00",
+        units: "mm",
     },
     layout: {
         width: 5000,
         height: 3000,
+        mountType: "Surface",
+        systemType: "SCT",
+        outputType: "XHF",
+        channelProfile: "Wide",
         elements: [],
     },
     lighting: {
@@ -96,10 +106,24 @@ export default function ProjectDetailPage() {
                     revision:
                         data.payload?.project?.revision ??
                         DEFAULT_PAYLOAD_TEMPLATE.project.revision,
+                    units:
+                        data.payload?.project?.units ?? DEFAULT_PAYLOAD_TEMPLATE.project.units,
                 },
                 layout: {
                     width: data.payload?.layout?.width ?? DEFAULT_PAYLOAD_TEMPLATE.layout.width,
                     height: data.payload?.layout?.height ?? DEFAULT_PAYLOAD_TEMPLATE.layout.height,
+                    mountType:
+                        data.payload?.layout?.mountType ??
+                        DEFAULT_PAYLOAD_TEMPLATE.layout.mountType,
+                    systemType:
+                        data.payload?.layout?.systemType ??
+                        DEFAULT_PAYLOAD_TEMPLATE.layout.systemType,
+                    outputType:
+                        data.payload?.layout?.outputType ??
+                        DEFAULT_PAYLOAD_TEMPLATE.layout.outputType,
+                    channelProfile:
+                        data.payload?.layout?.channelProfile ??
+                        DEFAULT_PAYLOAD_TEMPLATE.layout.channelProfile,
                     elements:
                         data.payload?.layout?.elements ?? DEFAULT_PAYLOAD_TEMPLATE.layout.elements,
                 },
@@ -136,10 +160,15 @@ export default function ProjectDetailPage() {
                 oppy: formData.project.oppy,
                 area: formData.project.area,
                 revision: formData.project.revision,
+                units: formData.project.units,
             },
             layout: {
                 width: Number(formData.layout.width),
                 height: Number(formData.layout.height),
+                mountType: formData.layout.mountType,
+                systemType: formData.layout.systemType,
+                outputType: formData.layout.outputType,
+                channelProfile: formData.layout.channelProfile,
                 elements: formData.layout.elements,
             },
             lighting: {
@@ -178,6 +207,22 @@ export default function ProjectDetailPage() {
         setFormData(DEFAULT_PAYLOAD_TEMPLATE);
         setMessage("Template loaded. Click Save Payload to store it.");
     };
+
+    const areaSqm = (Number(formData.layout.width) * Number(formData.layout.height)) / 1000000;
+
+    const textileMultiplier =
+        formData.pricing.textile === "texture"
+            ? 1.05
+            : formData.pricing.textile === "waffle"
+                ? 1.13
+                : 1.0;
+
+    const textileLabel =
+        formData.pricing.textile === "texture"
+            ? "Texture (+5%)"
+            : formData.pricing.textile === "waffle"
+                ? "Waffle (+13%)"
+                : "Standard";
 
     if (!project) {
         return (
@@ -255,6 +300,26 @@ export default function ProjectDetailPage() {
                     </label>
 
                     <label>
+                        <div>Units</div>
+                        <select
+                            value={formData.project.units}
+                            onChange={(e) =>
+                                setFormData({
+                                    ...formData,
+                                    project: {
+                                        ...formData.project,
+                                        units: e.target.value as "mm" | "inch",
+                                    },
+                                })
+                            }
+                            style={{ width: "100%", padding: 10 }}
+                        >
+                            <option value="mm">mm</option>
+                            <option value="inch">inch</option>
+                        </select>
+                    </label>
+
+                    <label>
                         <div>Width</div>
                         <input
                             type="number"
@@ -291,9 +356,89 @@ export default function ProjectDetailPage() {
                     </label>
 
                     <label>
+                        <div>Mount Type</div>
+                        <select
+                            value={formData.layout.mountType}
+                            onChange={(e) =>
+                                setFormData({
+                                    ...formData,
+                                    layout: {
+                                        ...formData.layout,
+                                        mountType: e.target.value,
+                                    },
+                                })
+                            }
+                            style={{ width: "100%", padding: 10 }}
+                        >
+                            <option value="Surface">Surface</option>
+                            <option value="Suspended">Suspended</option>
+                        </select>
+                    </label>
+
+                    <label>
+                        <div>System Type</div>
+                        <select
+                            value={formData.layout.systemType}
+                            onChange={(e) =>
+                                setFormData({
+                                    ...formData,
+                                    layout: {
+                                        ...formData.layout,
+                                        systemType: e.target.value,
+                                    },
+                                })
+                            }
+                            style={{ width: "100%", padding: 10 }}
+                        >
+                            <option value="SCT">SCT</option>
+                            <option value="TNW">TNW</option>
+                        </select>
+                    </label>
+
+                    <label>
+                        <div>Output Type</div>
+                        <select
+                            value={formData.layout.outputType}
+                            onChange={(e) =>
+                                setFormData({
+                                    ...formData,
+                                    layout: {
+                                        ...formData.layout,
+                                        outputType: e.target.value,
+                                    },
+                                })
+                            }
+                            style={{ width: "100%", padding: 10 }}
+                        >
+                            <option value="HF">HF</option>
+                            <option value="XHF">XHF</option>
+                        </select>
+                    </label>
+
+                    <label>
+                        <div>Channel Profile</div>
+                        <select
+                            value={formData.layout.channelProfile}
+                            onChange={(e) =>
+                                setFormData({
+                                    ...formData,
+                                    layout: {
+                                        ...formData.layout,
+                                        channelProfile: e.target.value,
+                                    },
+                                })
+                            }
+                            style={{ width: "100%", padding: 10 }}
+                        >
+                            <option value="Wide">Wide</option>
+                            <option value="Narrow">Narrow</option>
+                            <option value="SkySpan">SkySpan</option>
+                        </select>
+                    </label>
+
+                    <label>
                         <div>Textile</div>
-                        <input
-                            type="text"
+                        <select
                             value={formData.pricing.textile}
                             onChange={(e) =>
                                 setFormData({
@@ -302,13 +447,16 @@ export default function ProjectDetailPage() {
                                 })
                             }
                             style={{ width: "100%", padding: 10 }}
-                        />
+                        >
+                            <option value="standard">Standard</option>
+                            <option value="texture">Texture (+5%)</option>
+                            <option value="waffle">Waffle (+13%)</option>
+                        </select>
                     </label>
 
                     <label>
                         <div>Currency</div>
-                        <input
-                            type="text"
+                        <select
                             value={formData.pricing.currency}
                             onChange={(e) =>
                                 setFormData({
@@ -317,7 +465,11 @@ export default function ProjectDetailPage() {
                                 })
                             }
                             style={{ width: "100%", padding: 10 }}
-                        />
+                        >
+                            <option value="USD">USD</option>
+                            <option value="EUR">EUR</option>
+                            <option value="CAD">CAD</option>
+                        </select>
                     </label>
                 </div>
 
@@ -328,6 +480,26 @@ export default function ProjectDetailPage() {
                     <button onClick={resetToTemplate} style={{ padding: "10px 16px" }}>
                         Reset to Template
                     </button>
+                </div>
+
+                <div
+                    style={{
+                        marginTop: 24,
+                        padding: 16,
+                        border: "1px solid #ddd",
+                        borderRadius: 8,
+                        background: "#fafafa",
+                        maxWidth: 520,
+                    }}
+                >
+                    <h3 style={{ marginTop: 0 }}>Pricing Preview</h3>
+                    <div>Area: {areaSqm.toFixed(2)} m²</div>
+                    <div>Textile: {textileLabel}</div>
+                    <div>Textile Multiplier: {textileMultiplier.toFixed(2)}x</div>
+                    <div style={{ marginTop: 8, fontSize: 13, color: "#666" }}>
+                        This mirrors the desktop tool structure, but exact pricing parity still
+                        requires loading the pricing tables and calculation logic from the app.
+                    </div>
                 </div>
 
                 <div style={{ marginTop: 24 }}>
