@@ -22,7 +22,7 @@ type StructuredPayload = {
         oppy: string;
         area: string;
         revision: string;
-        units: "mm" | "inch";
+        units: "mm" | "inch" | "ft";
     };
     layout: {
         width: number;
@@ -210,18 +210,11 @@ export default function ProjectDetailPage() {
 
     const areaSqm = (Number(formData.layout.width) * Number(formData.layout.height)) / 1000000;
 
-    const textileMultiplier =
-        formData.pricing.textile === "texture"
-            ? 1.05
-            : formData.pricing.textile === "waffle"
-                ? 1.13
-                : 1.0;
-
     const textileLabel =
         formData.pricing.textile === "texture"
-            ? "Texture (+5%)"
+            ? "Texture"
             : formData.pricing.textile === "waffle"
-                ? "Waffle (+13%)"
+                ? "Waffle"
                 : "Standard";
 
     if (!project) {
@@ -286,8 +279,7 @@ export default function ProjectDetailPage() {
 
                     <label>
                         <div>Revision</div>
-                        <input
-                            type="text"
+                        <select
                             value={formData.project.revision}
                             onChange={(e) =>
                                 setFormData({
@@ -296,7 +288,19 @@ export default function ProjectDetailPage() {
                                 })
                             }
                             style={{ width: "100%", padding: 10 }}
-                        />
+                        >
+                            <option value="R00">R00</option>
+                            <option value="R01">R01</option>
+                            <option value="R02">R02</option>
+                            <option value="R03">R03</option>
+                            <option value="R04">R04</option>
+                            <option value="R05">R05</option>
+                            <option value="R06">R06</option>
+                            <option value="R07">R07</option>
+                            <option value="R08">R08</option>
+                            <option value="R09">R09</option>
+                            <option value="R10">R10</option>
+                        </select>
                     </label>
 
                     <label>
@@ -308,7 +312,7 @@ export default function ProjectDetailPage() {
                                     ...formData,
                                     project: {
                                         ...formData.project,
-                                        units: e.target.value as "mm" | "inch",
+                                        units: e.target.value as "mm" | "inch" | "ft",
                                     },
                                 })
                             }
@@ -316,6 +320,7 @@ export default function ProjectDetailPage() {
                         >
                             <option value="mm">mm</option>
                             <option value="inch">inch</option>
+                            <option value="ft">ft</option>
                         </select>
                     </label>
 
@@ -410,8 +415,13 @@ export default function ProjectDetailPage() {
                             }
                             style={{ width: "100%", padding: 10 }}
                         >
-                            <option value="HF">HF</option>
                             <option value="XHF">XHF</option>
+                            <option value="HF">HF</option>
+                            <option value="MHF">MHF</option>
+                            <option value="MF">MF</option>
+                            <option value="LMF">LMF</option>
+                            <option value="LF">LF</option>
+                            <option value="ECO">ECO</option>
                         </select>
                     </label>
 
@@ -449,8 +459,8 @@ export default function ProjectDetailPage() {
                             style={{ width: "100%", padding: 10 }}
                         >
                             <option value="standard">Standard</option>
-                            <option value="texture">Texture (+5%)</option>
-                            <option value="waffle">Waffle (+13%)</option>
+                            <option value="texture">Texture</option>
+                            <option value="waffle">Waffle</option>
                         </select>
                     </label>
 
@@ -467,7 +477,6 @@ export default function ProjectDetailPage() {
                             style={{ width: "100%", padding: 10 }}
                         >
                             <option value="USD">USD</option>
-                            <option value="EUR">EUR</option>
                             <option value="CAD">CAD</option>
                         </select>
                     </label>
@@ -495,26 +504,12 @@ export default function ProjectDetailPage() {
                     <h3 style={{ marginTop: 0 }}>Pricing Preview</h3>
                     <div>Area: {areaSqm.toFixed(2)} m²</div>
                     <div>Textile: {textileLabel}</div>
-                    <div>Textile Multiplier: {textileMultiplier.toFixed(2)}x</div>
                     <div style={{ marginTop: 8, fontSize: 13, color: "#666" }}>
                         This mirrors the desktop tool structure, but exact pricing parity still
                         requires loading the pricing tables and calculation logic from the app.
                     </div>
                 </div>
 
-                <div style={{ marginTop: 24 }}>
-                    <h3>Current JSON Preview</h3>
-                    <pre
-                        style={{
-                            background: "#f5f5f5",
-                            padding: 16,
-                            borderRadius: 8,
-                            overflowX: "auto",
-                        }}
-                    >
-                        {JSON.stringify(formData, null, 2)}
-                    </pre>
-                </div>
 
                 {message && <p style={{ marginTop: 12 }}>{message}</p>}
             </div>
