@@ -8,14 +8,22 @@ const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+type ProjectRow = {
+    id: string;
+    name: string;
+    payload: any;
+    created_at: string;
+};
+
 export default function DashboardPage() {
     const [email, setEmail] = useState<string | null>(null);
     const [userId, setUserId] = useState<string | null>(null);
     const [projectName, setProjectName] = useState("");
     const [message, setMessage] = useState("");
+    const [projects, setProjects] = useState<ProjectRow[]>([]);
 
     useEffect(() => {
-        const loadUser = async () => {
+        const loadUserAndProjects = async () => {
             const { data, error } = await supabase.auth.getUser();
 
             if (error) {
@@ -23,12 +31,33 @@ export default function DashboardPage() {
                 return;
             }
 
-            setEmail(data.user?.email ?? null);
-            setUserId(data.user?.id ?? null);
+            const user = data.user;
+            setEmail(user?.email ?? null);
+            setUserId(user?.id ?? null);
+
+            if (user?.id) {
+                await loadProjects(user.id);
+            }
         };
 
-        loadUser();
+        loadUserAndProjects();
     }, []);
+
+    const loadProjects = async (uid: string) => {
+        const { data, error } = await supabase
+            .from("projects")
+            .select("*")
+            .eq("user_id", uid)
+            .order("created_at", { ascending: false });
+
+        if (error) {
+            console.error(error);
+            setMessage("Error loading projects: " + error.message);
+            return;
+        }
+
+        setProjects(data ?? []);
+    };
 
     const saveProject = async () => {
         if (!userId) {
@@ -45,13 +74,13 @@ export default function DashboardPage() {
             oppy_number: "",
             area_designation: "",
             revision: "R00",
-            note: "First saved online test project"
+            note: "First saved online test project",
         };
 
         const { error } = await supabase.from("projects").insert({
             user_id: userId,
             name: projectName,
-            payload
+            payload,
         });
 
         if (error) {
@@ -62,6 +91,7 @@ export default function DashboardPage() {
 
         setMessage("Project saved successfully.");
         setProjectName("");
+        await loadProjects(userId);
     };
 
     return (
@@ -87,6 +117,32 @@ export default function DashboardPage() {
                 </div>
 
                 <p style={{ marginTop: 16 }}>{message}</p>
+            </div>
+
+            <div style={{ marginTop: 40 }}>
+                <h2>My Projects</h2>
+
+                {projects.length === 0 ? (
+                    <p>No saved projects yet.</p>
+                ) : (
+                    <div style={{ display: "grid", gap: 12 }}>
+                        {projects.map((project) => (
+                            <div
+                                key={project.id}
+                                style={{
+                                    border: "1px solid #ccc",
+                                    borderRadius: 8,
+                                    padding: 16,
+                                }}
+                            >
+                                <strong>{project.name}</strong>
+                                <div style={{ marginTop: 6, fontSize: 14, color: "#555" }}>
+                                    Created: {new Date(project.created_at).toLocaleString()}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </main>
     );
