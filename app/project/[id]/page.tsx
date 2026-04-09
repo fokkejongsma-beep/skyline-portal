@@ -60,18 +60,28 @@ export default function ProjectDetailPage() {
         try {
             const parsed = JSON.parse(payloadText);
 
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from("projects")
                 .update({ payload: parsed })
-                .eq("id", project.id);
+                .eq("id", project.id)
+                .select("id, payload")
+                .maybeSingle();
 
             if (error) {
                 setMessage("Error saving: " + error.message);
                 return;
             }
 
+            if (!data) {
+                setMessage("Save was not applied. Check Supabase update policies.");
+                return;
+            }
+
+            setProject({ ...project, payload: data.payload });
+            setPayloadText(JSON.stringify(data.payload, null, 2));
             setMessage("Payload updated successfully.");
         } catch (e) {
+            console.error(e);
             setMessage("Invalid JSON format.");
         }
     };
