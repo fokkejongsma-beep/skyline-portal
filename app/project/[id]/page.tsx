@@ -44,8 +44,7 @@ type StructuredPayload = {
     lighting: {
         downlights: any[];
         track: {
-            type: "mains" | "48V";
-            items: Array<{ id: string; lengthMm: number }>;
+            items: Array<{ id: string; type: "mains" | "48V"; lengthMm: number }>;
         };
         furtivo: any[];
     };
@@ -82,7 +81,6 @@ const DEFAULT_PAYLOAD_TEMPLATE: StructuredPayload = {
     lighting: {
         downlights: [],
         track: {
-            type: "mains",
             items: [],
         },
         furtivo: [],
@@ -102,6 +100,7 @@ export default function ProjectDetailPage() {
     const [jointPricing, setJointPricing] = useState<any[]>([]);
     const [elementPricing, setElementPricing] = useState<any[]>([]);
     const [selectedElementType, setSelectedElementType] = useState("downlights");
+    const [selectedTrackType, setSelectedTrackType] = useState<"mains" | "48V">("mains");
     const [selectedTrackLengthMm, setSelectedTrackLengthMm] = useState(1500);
     useEffect(() => {
         const loadElementPricing = async () => {
@@ -195,9 +194,6 @@ export default function ProjectDetailPage() {
                         data.payload?.lighting?.downlights ??
                         DEFAULT_PAYLOAD_TEMPLATE.lighting.downlights,
                     track: {
-                        type:
-                            data.payload?.lighting?.track?.type ??
-                            DEFAULT_PAYLOAD_TEMPLATE.lighting.track.type,
                         items:
                             data.payload?.lighting?.track?.items ??
                             DEFAULT_PAYLOAD_TEMPLATE.lighting.track.items,
@@ -285,7 +281,6 @@ export default function ProjectDetailPage() {
             lighting: {
                 downlights: formData.lighting.downlights,
                 track: {
-                    type: formData.lighting.track.type,
                     items: formData.lighting.track.items,
                 },
                 furtivo: formData.lighting.furtivo,
@@ -345,7 +340,11 @@ export default function ProjectDetailPage() {
                         ...formData.lighting.track,
                         items: [
                             ...formData.lighting.track.items,
-                            { id: crypto.randomUUID(), lengthMm: selectedTrackLengthMm },
+                            {
+                                id: crypto.randomUUID(),
+                                type: selectedTrackType,
+                                lengthMm: selectedTrackLengthMm,
+                            },
                         ],
                     },
                 },
@@ -371,7 +370,6 @@ export default function ProjectDetailPage() {
                 ...formData.lighting,
                 downlights: [],
                 track: {
-                    ...formData.lighting.track,
                     items: [],
                 },
                 furtivo: [],
@@ -407,6 +405,31 @@ export default function ProjectDetailPage() {
         });
     };
 
+    const updateTrackItemType = (itemId: string, newType: "mains" | "48V") => {
+        setFormData({
+            ...formData,
+            lighting: {
+                ...formData.lighting,
+                track: {
+                    ...formData.lighting.track,
+                    items: formData.lighting.track.items.map((item) =>
+                        item.id === itemId ? { ...item, type: newType } : item,
+                    ),
+                },
+            },
+        });
+    };
+
+    const removeLightingItem = (kind: "downlights" | "furtivo", itemId: string) => {
+        setFormData({
+            ...formData,
+            lighting: {
+                ...formData.lighting,
+                [kind]: formData.lighting[kind].filter((item: any) => item.id !== itemId),
+            },
+        });
+    };
+
     const width = Number(formData.layout.width) || 0;
     const height = Number(formData.layout.height) || 0;
 
@@ -424,14 +447,43 @@ export default function ProjectDetailPage() {
         return `${(mmValue / 304.8).toFixed(2)} ft`;
     };
 
-    const areaSqft =
-        formData.project.units === "mm"
-            ? (width / 304.8) * (height / 304.8)
-            : formData.project.units === "inch"
-                ? (width / 12) * (height / 12)
-                : width * height;
+    const toMmFromSelectedUnit = (value: number) => {
+        if (formData.project.units === "mm") {
+            return value;
+        }
+        if (formData.project.units === "inch") {
+            return value * 25.4;
+        }
+        return value * 304.8;
+    };
 
-    const areaSqm = areaSqft / 10.7639;
+    const formatDimensionForSelectedUnit = (mmValue: number) => {
+        if (formData.project.units === "mm") {
+            return `${mmValue.toFixed(0)} mm`;
+        }
+        if (formData.project.units === "inch") {
+            return `${(mmValue / 25.4).toFixed(2)} in`;
+        }
+        return `${(mmValue / 304.8).toFixed(2)} ft`;
+    };
+
+    const outerLengthMm = toMmFromSelectedUnit(width);
+    const outerWidthMm = toMmFromSelectedUnit(height);
+
+    const perimeterChannelMm =
+        formData.layout.channelProfile === "Narrow"
+            ? 104
+            : formData.layout.channelProfile === "Wide"
+                ? 168
+                : 10;
+
+    const innerLengthMm = Math.max(outerLengthMm - 2 * perimeterChannelMm, 0);
+    const innerWidthMm = Math.max(outerWidthMm - 2 * perimeterChannelMm, 0);
+
+    const outerAreaSqft = (outerLengthMm / 304.8) * (outerWidthMm / 304.8);
+    const innerOpeningSqft = (innerLengthMm / 304.8) * (innerWidthMm / 304.8);
+    const opticalAreaSqft = innerOpeningSqft;
+    const outerAreaSqm = outerAreaSqft / 10.7639;
 
     const textileLabel =
         formData.pricing.textile === "texture"
@@ -453,12 +505,13 @@ export default function ProjectDetailPage() {
         (row) =>
             row.system === formData.layout.systemType &&
             row.mount === mountKey &&
-            areaSqft >= row.min_sqft &&
-            areaSqft < row.max_sqft,
+            opticalAreaSqft >= row.min_sqft &&
+            opticalAreaSqft < row.max_sqft,
     );
 
     const baseRate = matchedRate?.selected_rate ?? null;
-    const illuminatedTotal = baseRate !== null ? areaSqft * baseRate * textileMultiplier : null;
+    const standardIlluminatedTotal = baseRate !== null ? opticalAreaSqft * baseRate : null;
+    const illuminatedTotal = standardIlluminatedTotal !== null ? standardIlluminatedTotal * textileMultiplier : null;
     const pricingNote =
         formData.pricing.currency === "CAD"
             ? "CAD selected. Uploaded pricing reference is USD-based; conversion is not configured yet."
@@ -522,20 +575,36 @@ export default function ProjectDetailPage() {
         ? formData.lighting.track.items
         : [];
 
+    const trackMainsItems = trackItems.filter((item) => item.type === "mains");
+    const track48VItems = trackItems.filter((item) => item.type === "48V");
+
     const trackLengthMm = trackItems.reduce(
         (sum, item) => sum + (Number(item.lengthMm) || 0),
         0,
     );
 
-    const trackElementKey = formData.lighting.track.type === "48V" ? "track_48v" : "track_mains";
-    const trackLabel = formData.lighting.track.type === "48V" ? "Track 48V" : "Track Mains";
+    const trackMainsLengthMm = trackMainsItems.reduce(
+        (sum, item) => sum + (Number(item.lengthMm) || 0),
+        0,
+    );
+
+    const track48VLengthMm = track48VItems.reduce(
+        (sum, item) => sum + (Number(item.lengthMm) || 0),
+        0,
+    );
 
     const elementCounts = [
         {
-            key: trackElementKey,
-            label: trackLabel,
-            count: trackItems.length,
-            lengthMm: trackLengthMm,
+            key: "track_mains",
+            label: "Track Mains",
+            count: trackMainsItems.length,
+            lengthMm: trackMainsLengthMm,
+        },
+        {
+            key: "track_48v",
+            label: "Track 48V",
+            count: track48VItems.length,
+            lengthMm: track48VLengthMm,
         },
         {
             key: "downlights",
@@ -973,18 +1042,9 @@ export default function ProjectDetailPage() {
                                 <label>
                                     <div>Track type</div>
                                     <select
-                                        value={formData.lighting.track.type}
+                                        value={selectedTrackType}
                                         onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                lighting: {
-                                                    ...formData.lighting,
-                                                    track: {
-                                                        ...formData.lighting.track,
-                                                        type: e.target.value as "mains" | "48V",
-                                                    },
-                                                },
-                                            })
+                                            setSelectedTrackType(e.target.value as "mains" | "48V")
                                         }
                                         style={{ width: "100%", padding: 10 }}
                                     >
@@ -1032,8 +1092,9 @@ export default function ProjectDetailPage() {
                             }}
                         >
                             <div>Downlights: {formData.lighting.downlights.length}</div>
-                            <div>Track type: {formData.lighting.track.type}</div>
                             <div>Track items: {formData.lighting.track.items.length}</div>
+                            <div>Track Mains length: {formatLengthForSelectedUnit(trackMainsLengthMm)}</div>
+                            <div>Track 48V length: {formatLengthForSelectedUnit(track48VLengthMm)}</div>
                             <div>
                                 Track total length: {formatLengthForSelectedUnit(trackLengthMm)}
                             </div>
@@ -1062,6 +1123,19 @@ export default function ProjectDetailPage() {
                                                         flexWrap: "wrap",
                                                     }}
                                                 >
+                                                    <select
+                                                        value={item.type}
+                                                        onChange={(e) =>
+                                                            updateTrackItemType(
+                                                                item.id,
+                                                                e.target.value as "mains" | "48V",
+                                                            )
+                                                        }
+                                                        style={{ padding: 8 }}
+                                                    >
+                                                        <option value="mains">Mains</option>
+                                                        <option value="48V">48V</option>
+                                                    </select>
                                                     <select
                                                         value={item.lengthMm}
                                                         onChange={(e) =>
@@ -1115,8 +1189,13 @@ export default function ProjectDetailPage() {
                     }}
                 >
                     <h3 style={{ marginTop: 0 }}>Pricing Preview</h3>
-                    <div>Outer area: {areaSqm.toFixed(2)} m²</div>
-                    <div>Outer area: {areaSqft.toFixed(2)} sqft</div>
+                    <div>Outer area: {outerAreaSqft.toFixed(2)} sqft</div>
+                    <div>
+                        Inner opening
+                        <br />L: {formatDimensionForSelectedUnit(innerLengthMm)}
+                        <br />W: {formatDimensionForSelectedUnit(innerWidthMm)}
+                    </div>
+                    <div>Optical area: {opticalAreaSqft.toFixed(2)} sqft</div>
                     <div>Textile: {textileLabel}</div>
                     <div>Lighting System - CCT: {formData.layout.systemType}</div>
                     <div>Lighting System - Output: {formData.layout.outputType}</div>
@@ -1124,12 +1203,78 @@ export default function ProjectDetailPage() {
                     {baseRate !== null ? (
                         <>
                             <div>
-                                Base rate ({textileLabel}): {formData.pricing.currency}{" "}
-                                {baseRate.toFixed(2)} / sqft
+                                Base rate (Standard): {formData.pricing.currency} {baseRate.toFixed(2)} / sqft
+                            </div>
+                            <div>
+                                Standard illuminated total: {formData.pricing.currency} {standardIlluminatedTotal?.toFixed(2)}
                             </div>
                             <div>
                                 Illuminated total: {formData.pricing.currency}{" "}
                                 {illuminatedTotal?.toFixed(2)}
+                            </div>
+                            <div style={{ marginTop: 12, fontWeight: 600 }}>
+                                Grand total / sqft (outer): {formData.pricing.currency} {outerAreaSqft > 0 ? (grandTotal / outerAreaSqft).toFixed(2) : "0.00"} / sqft
+                            </div>
+                            <div
+                                style={{
+                                    marginTop: 24,
+                                    padding: 16,
+                                    border: "1px solid #ddd",
+                                    borderRadius: 8,
+                                    background: "#fafafa",
+                                    maxWidth: 520,
+                                }}
+                            >
+                                <h3 style={{ marginTop: 0 }}>Elements Summary</h3>
+                                {formData.lighting.downlights.length > 0 ? (
+                                    formData.lighting.downlights.map((item, index) => (
+                                        <div
+                                            key={item.id}
+                                            style={{ display: "flex", justifyContent: "space-between", gap: 12 }}
+                                        >
+                                            <span>- Cooledge Downlight {index + 1}</span>
+                                            <button
+                                                onClick={() => removeLightingItem("downlights", item.id)}
+                                                style={{ padding: "4px 8px" }}
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div>- no downlights</div>
+                                )}
+
+                                <div style={{ marginTop: 12, fontWeight: 600 }}>Tracks</div>
+                                {formData.lighting.track.items.length > 0 ? (
+                                    formData.lighting.track.items.map((item, index) => (
+                                        <div key={item.id} style={{ marginBottom: 6 }}>
+                                            - {item.type === "48V" ? "Track 48V" : "Track Mains"} {index + 1}: {formatLengthForSelectedUnit(item.lengthMm)}
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div>- no track</div>
+                                )}
+
+                                <div style={{ marginTop: 12, fontWeight: 600 }}>Furtivo</div>
+                                {formData.lighting.furtivo.length > 0 ? (
+                                    formData.lighting.furtivo.map((item, index) => (
+                                        <div
+                                            key={item.id}
+                                            style={{ display: "flex", justifyContent: "space-between", gap: 12 }}
+                                        >
+                                            <span>- Furtivo {index + 1}</span>
+                                            <button
+                                                onClick={() => removeLightingItem("furtivo", item.id)}
+                                                style={{ padding: "4px 8px" }}
+                                            >
+                                                Remove
+                                            </button>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <div>- no furtivo</div>
+                                )}
                             </div>
 
                             <div style={{ marginTop: 12, fontWeight: 600 }}>Joint Pricing</div>
