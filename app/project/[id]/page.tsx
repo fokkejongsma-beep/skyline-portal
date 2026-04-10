@@ -95,6 +95,7 @@ export default function ProjectDetailPage() {
     const [pricingReference, setPricingReference] = useState<any[]>([]);
     const [jointPricing, setJointPricing] = useState<any[]>([]);
     const [elementPricing, setElementPricing] = useState<any[]>([]);
+    const [selectedElementType, setSelectedElementType] = useState("downlights");
     useEffect(() => {
         const loadElementPricing = async () => {
             const { data, error } = await supabase
@@ -303,6 +304,54 @@ export default function ProjectDetailPage() {
     const resetToTemplate = () => {
         setFormData(DEFAULT_PAYLOAD_TEMPLATE);
         setMessage("Template loaded. Click Save Payload to store it.");
+    };
+
+    const addSelectedElement = () => {
+        const newItem = { id: crypto.randomUUID() };
+
+        if (selectedElementType === "downlights") {
+            setFormData({
+                ...formData,
+                lighting: {
+                    ...formData.lighting,
+                    downlights: [...formData.lighting.downlights, newItem],
+                },
+            });
+            return;
+        }
+
+        if (selectedElementType === "track") {
+            setFormData({
+                ...formData,
+                lighting: {
+                    ...formData.lighting,
+                    track: [...formData.lighting.track, newItem],
+                },
+            });
+            return;
+        }
+
+        if (selectedElementType === "furtivo") {
+            setFormData({
+                ...formData,
+                lighting: {
+                    ...formData.lighting,
+                    furtivo: [...formData.lighting.furtivo, newItem],
+                },
+            });
+        }
+    };
+
+    const clearElements = () => {
+        setFormData({
+            ...formData,
+            lighting: {
+                ...formData.lighting,
+                downlights: [],
+                track: [],
+                furtivo: [],
+            },
+        });
     };
 
     const width = Number(formData.layout.width) || 0;
@@ -822,6 +871,46 @@ export default function ProjectDetailPage() {
                                 style={{ width: "100%", padding: 10 }}
                             />
                         </label>
+                    </div>
+                </div>
+
+                <div style={{ marginTop: 24, maxWidth: 520 }}>
+                    <h3>Elements</h3>
+                    <div style={{ display: "grid", gap: 12 }}>
+                        <label>
+                            <div>Element type</div>
+                            <select
+                                value={selectedElementType}
+                                onChange={(e) => setSelectedElementType(e.target.value)}
+                                style={{ width: "100%", padding: 10 }}
+                            >
+                                <option value="downlights">Cooledge Downlight</option>
+                                <option value="track">Track</option>
+                                <option value="furtivo">Furtivo</option>
+                            </select>
+                        </label>
+
+                        <div style={{ display: "flex", gap: 12 }}>
+                            <button onClick={addSelectedElement} style={{ padding: "10px 16px" }}>
+                                Add Element
+                            </button>
+                            <button onClick={clearElements} style={{ padding: "10px 16px" }}>
+                                Clear Elements
+                            </button>
+                        </div>
+
+                        <div
+                            style={{
+                                border: "1px solid #ddd",
+                                borderRadius: 8,
+                                padding: 12,
+                                background: "#fafafa",
+                            }}
+                        >
+                            <div>Downlights: {formData.lighting.downlights.length}</div>
+                            <div>Track: {formData.lighting.track.length}</div>
+                            <div>Furtivo: {formData.lighting.furtivo.length}</div>
+                        </div>
                     </div>
                 </div>
 
