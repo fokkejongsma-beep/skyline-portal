@@ -102,6 +102,7 @@ export default function ProjectDetailPage() {
     const [jointPricing, setJointPricing] = useState<any[]>([]);
     const [elementPricing, setElementPricing] = useState<any[]>([]);
     const [selectedElementType, setSelectedElementType] = useState("downlights");
+    const [selectedTrackLengthMm, setSelectedTrackLengthMm] = useState(1500);
     useEffect(() => {
         const loadElementPricing = async () => {
             const { data, error } = await supabase
@@ -342,7 +343,10 @@ export default function ProjectDetailPage() {
                     ...formData.lighting,
                     track: {
                         ...formData.lighting.track,
-                        items: [...formData.lighting.track.items, { id: crypto.randomUUID(), lengthMm: 1500 }],
+                        items: [
+                            ...formData.lighting.track.items,
+                            { id: crypto.randomUUID(), lengthMm: selectedTrackLengthMm },
+                        ],
                     },
                 },
             });
@@ -377,6 +381,20 @@ export default function ProjectDetailPage() {
 
     const width = Number(formData.layout.width) || 0;
     const height = Number(formData.layout.height) || 0;
+
+    const TRACK_LENGTH_OPTIONS_MM = [500, 1000, 1500] as const;
+
+    const formatLengthForSelectedUnit = (mmValue: number) => {
+        if (formData.project.units === "mm") {
+            return `${mmValue} mm`;
+        }
+
+        if (formData.project.units === "inch") {
+            return `${(mmValue / 25.4).toFixed(2)} in`;
+        }
+
+        return `${(mmValue / 304.8).toFixed(2)} ft`;
+    };
 
     const areaSqft =
         formData.project.units === "mm"
@@ -923,28 +941,49 @@ export default function ProjectDetailPage() {
                             </select>
                         </label>
                         {selectedElementType === "track" && (
-                            <label>
-                                <div>Track type</div>
-                                <select
-                                    value={formData.lighting.track.type}
-                                    onChange={(e) =>
-                                        setFormData({
-                                            ...formData,
-                                            lighting: {
-                                                ...formData.lighting,
-                                                track: {
-                                                    ...formData.lighting.track,
-                                                    type: e.target.value as "mains" | "48V",
+                            <>
+                                <label>
+                                    <div>Track type</div>
+                                    <select
+                                        value={formData.lighting.track.type}
+                                        onChange={(e) =>
+                                            setFormData({
+                                                ...formData,
+                                                lighting: {
+                                                    ...formData.lighting,
+                                                    track: {
+                                                        ...formData.lighting.track,
+                                                        type: e.target.value as "mains" | "48V",
+                                                    },
                                                 },
-                                            },
-                                        })
-                                    }
-                                    style={{ width: "100%", padding: 10 }}
-                                >
-                                    <option value="mains">Mains</option>
-                                    <option value="48V">48V</option>
-                                </select>
-                            </label>
+                                            })
+                                        }
+                                        style={{ width: "100%", padding: 10 }}
+                                    >
+                                        <option value="mains">Mains</option>
+                                        <option value="48V">48V</option>
+                                    </select>
+                                </label>
+
+                                <label>
+                                    <div>Track length</div>
+                                    <select
+                                        value={selectedTrackLengthMm}
+                                        onChange={(e) => setSelectedTrackLengthMm(Number(e.target.value))}
+                                        style={{ width: "100%", padding: 10 }}
+                                    >
+                                        {TRACK_LENGTH_OPTIONS_MM.map((lengthMm) => (
+                                            <option key={lengthMm} value={lengthMm}>
+                                                {formatLengthForSelectedUnit(lengthMm)}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+
+                                <div style={{ fontSize: 13, color: "#666" }}>
+                                    Track length options are fixed at 500 mm, 1000 mm, and 1500 mm.
+                                </div>
+                            </>
                         )}
 
                         <div style={{ display: "flex", gap: 12 }}>
@@ -968,7 +1007,7 @@ export default function ProjectDetailPage() {
                             <div>Track type: {formData.lighting.track.type}</div>
                             <div>Track items: {formData.lighting.track.items.length}</div>
                             <div>
-                                Track total length: {trackLengthMm} mm
+                                Track total length: {formatLengthForSelectedUnit(trackLengthMm)}
                             </div>
                             <div>Furtivo: {formData.lighting.furtivo.length}</div>
                         </div>
@@ -1037,7 +1076,7 @@ export default function ProjectDetailPage() {
                                     {elementBreakdown.map((item) => (
                                         <div key={item.key}>
                                             {item.priceBasis === "length_mm"
-                                                ? `${item.label}: ${item.lengthMm} mm × ${formData.pricing.currency} ${item.unitPrice.toFixed(4)} = ${formData.pricing.currency} ${item.total.toFixed(2)}`
+                                                ? `${item.label}: ${formatLengthForSelectedUnit(item.lengthMm)} × ${formData.pricing.currency} ${item.unitPrice.toFixed(4)} = ${formData.pricing.currency} ${item.total.toFixed(2)}`
                                                 : `${item.label}: ${item.count} × ${formData.pricing.currency} ${item.unitPrice.toFixed(2)} = ${formData.pricing.currency} ${item.total.toFixed(2)}`}
                                         </div>
                                     ))}
