@@ -43,7 +43,10 @@ type StructuredPayload = {
     };
     lighting: {
         downlights: any[];
-        track: any[];
+        track: {
+            type: "mains" | "48V";
+            items: Array<{ id: string; lengthMm: number }>;
+        };
         furtivo: any[];
     };
     pricing: {
@@ -78,7 +81,10 @@ const DEFAULT_PAYLOAD_TEMPLATE: StructuredPayload = {
     },
     lighting: {
         downlights: [],
-        track: [],
+        track: {
+            type: "mains",
+            items: [],
+        },
         furtivo: [],
     },
     pricing: {
@@ -187,8 +193,14 @@ export default function ProjectDetailPage() {
                     downlights:
                         data.payload?.lighting?.downlights ??
                         DEFAULT_PAYLOAD_TEMPLATE.lighting.downlights,
-                    track:
-                        data.payload?.lighting?.track ?? DEFAULT_PAYLOAD_TEMPLATE.lighting.track,
+                    track: {
+                        type:
+                            data.payload?.lighting?.track?.type ??
+                            DEFAULT_PAYLOAD_TEMPLATE.lighting.track.type,
+                        items:
+                            data.payload?.lighting?.track?.items ??
+                            DEFAULT_PAYLOAD_TEMPLATE.lighting.track.items,
+                    },
                     furtivo:
                         data.payload?.lighting?.furtivo ?? DEFAULT_PAYLOAD_TEMPLATE.lighting.furtivo,
                 },
@@ -271,7 +283,10 @@ export default function ProjectDetailPage() {
             },
             lighting: {
                 downlights: formData.lighting.downlights,
-                track: formData.lighting.track,
+                track: {
+                    type: formData.lighting.track.type,
+                    items: formData.lighting.track.items,
+                },
                 furtivo: formData.lighting.furtivo,
             },
             pricing: {
@@ -325,7 +340,10 @@ export default function ProjectDetailPage() {
                 ...formData,
                 lighting: {
                     ...formData.lighting,
-                    track: [...formData.lighting.track, newItem],
+                    track: {
+                        ...formData.lighting.track,
+                        items: [...formData.lighting.track.items, { id: crypto.randomUUID(), lengthMm: 1500 }],
+                    },
                 },
             });
             return;
@@ -348,7 +366,10 @@ export default function ProjectDetailPage() {
             lighting: {
                 ...formData.lighting,
                 downlights: [],
-                track: [],
+                track: {
+                    ...formData.lighting.track,
+                    items: [],
+                },
                 furtivo: [],
             },
         });
@@ -451,12 +472,24 @@ export default function ProjectDetailPage() {
         elementPricing.map((row) => [row.element_type, row]),
     ) as Record<string, any>;
 
+    const trackItems = Array.isArray(formData.lighting.track.items)
+        ? formData.lighting.track.items
+        : [];
+
+    const trackLengthMm = trackItems.reduce(
+        (sum, item) => sum + (Number(item.lengthMm) || 0),
+        0,
+    );
+
+    const trackElementKey = formData.lighting.track.type === "48V" ? "track_48v" : "track_mains";
+    const trackLabel = formData.lighting.track.type === "48V" ? "Track 48V" : "Track Mains";
+
     const elementCounts = [
         {
-            key: "track",
-            label: "Track",
-            count: Array.isArray(formData.lighting.track) ? formData.lighting.track.length : 0,
-            lengthMm: 0,
+            key: trackElementKey,
+            label: trackLabel,
+            count: trackItems.length,
+            lengthMm: trackLengthMm,
         },
         {
             key: "downlights",
@@ -483,7 +516,7 @@ export default function ProjectDetailPage() {
 
             const total =
                 priceBasis === "length_mm"
-                    ? (item.lengthMm / 1000) * unitPrice
+                    ? item.lengthMm * unitPrice
                     : item.count * unitPrice;
 
             return {
@@ -889,6 +922,30 @@ export default function ProjectDetailPage() {
                                 <option value="furtivo">Furtivo</option>
                             </select>
                         </label>
+                        {selectedElementType === "track" && (
+                            <label>
+                                <div>Track type</div>
+                                <select
+                                    value={formData.lighting.track.type}
+                                    onChange={(e) =>
+                                        setFormData({
+                                            ...formData,
+                                            lighting: {
+                                                ...formData.lighting,
+                                                track: {
+                                                    ...formData.lighting.track,
+                                                    type: e.target.value as "mains" | "48V",
+                                                },
+                                            },
+                                        })
+                                    }
+                                    style={{ width: "100%", padding: 10 }}
+                                >
+                                    <option value="mains">Mains</option>
+                                    <option value="48V">48V</option>
+                                </select>
+                            </label>
+                        )}
 
                         <div style={{ display: "flex", gap: 12 }}>
                             <button onClick={addSelectedElement} style={{ padding: "10px 16px" }}>
@@ -908,7 +965,11 @@ export default function ProjectDetailPage() {
                             }}
                         >
                             <div>Downlights: {formData.lighting.downlights.length}</div>
-                            <div>Track: {formData.lighting.track.length}</div>
+                            <div>Track type: {formData.lighting.track.type}</div>
+                            <div>Track items: {formData.lighting.track.items.length}</div>
+                            <div>
+                                Track total length: {trackLengthMm} mm
+                            </div>
                             <div>Furtivo: {formData.lighting.furtivo.length}</div>
                         </div>
                     </div>
@@ -975,9 +1036,9 @@ export default function ProjectDetailPage() {
                                 <>
                                     {elementBreakdown.map((item) => (
                                         <div key={item.key}>
-                                            {item.label}: {item.count} × {formData.pricing.currency}{" "}
-                                            {item.unitPrice.toFixed(2)} = {formData.pricing.currency}{" "}
-                                            {item.total.toFixed(2)}
+                                            {item.priceBasis === "length_mm"
+                                                ? `${item.label}: ${item.lengthMm} mm × ${formData.pricing.currency} ${item.unitPrice.toFixed(4)} = ${formData.pricing.currency} ${item.total.toFixed(2)}`
+                                                : `${item.label}: ${item.count} × ${formData.pricing.currency} ${item.unitPrice.toFixed(2)} = ${formData.pricing.currency} ${item.total.toFixed(2)}`}
                                         </div>
                                     ))}
                                     <div style={{ marginTop: 6 }}>
