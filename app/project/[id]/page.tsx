@@ -568,8 +568,16 @@ export default function ProjectDetailPage() {
     const jointTotal = jointBreakdown.reduce((sum, item) => sum + item.total, 0);
 
     const elementPriceMap = Object.fromEntries(
-        elementPricing.map((row) => [row.element_type, row]),
+        elementPricing.map((row) => [String(row.element_type).toLowerCase(), row]),
     ) as Record<string, any>;
+
+    const getElementPricingRow = (keys: string[]) => {
+        for (const key of keys) {
+            const match = elementPriceMap[String(key).toLowerCase()];
+            if (match) return match;
+        }
+        return null;
+    };
 
     const trackItems = Array.isArray(formData.lighting.track.items)
         ? formData.lighting.track.items
@@ -596,18 +604,21 @@ export default function ProjectDetailPage() {
     const elementCounts = [
         {
             key: "track_mains",
+            pricingKeys: ["track_mains", "track mains", "mains_track", "track"],
             label: "Track Mains",
             count: trackMainsItems.length,
             lengthMm: trackMainsLengthMm,
         },
         {
             key: "track_48v",
+            pricingKeys: ["track_48v", "track 48v", "48v_track"],
             label: "Track 48V",
             count: track48VItems.length,
             lengthMm: track48VLengthMm,
         },
         {
             key: "downlights",
+            pricingKeys: ["downlights", "downlight", "cooledge_downlight", "cooledge downlight"],
             label: "Downlights",
             count: Array.isArray(formData.lighting.downlights)
                 ? formData.lighting.downlights.length
@@ -616,6 +627,7 @@ export default function ProjectDetailPage() {
         },
         {
             key: "furtivo",
+            pricingKeys: ["furtivo"],
             label: "Furtivo",
             count: Array.isArray(formData.lighting.furtivo) ? formData.lighting.furtivo.length : 0,
             lengthMm: 0,
@@ -625,7 +637,7 @@ export default function ProjectDetailPage() {
     const elementBreakdown = elementCounts
         .filter((item) => item.count > 0)
         .map((item) => {
-            const pricingRow = elementPriceMap[item.key];
+            const pricingRow = getElementPricingRow(item.pricingKeys ?? [item.key]);
             const unitPrice = pricingRow ? Number(pricingRow.unit_price) || 0 : 0;
             const priceBasis = pricingRow?.price_basis || "each";
 
@@ -1248,8 +1260,19 @@ export default function ProjectDetailPage() {
                                 <div style={{ marginTop: 12, fontWeight: 600 }}>Tracks</div>
                                 {formData.lighting.track.items.length > 0 ? (
                                     formData.lighting.track.items.map((item, index) => (
-                                        <div key={item.id} style={{ marginBottom: 6 }}>
-                                            - {item.type === "48V" ? "Track 48V" : "Track Mains"} {index + 1}: {formatLengthForSelectedUnit(item.lengthMm)}
+                                        <div
+                                            key={item.id}
+                                            style={{ display: "flex", justifyContent: "space-between", gap: 12 }}
+                                        >
+                                            <span>
+                                                - {item.type === "48V" ? "Track 48V" : "Track Mains"} {index + 1}: {formatLengthForSelectedUnit(item.lengthMm)}
+                                            </span>
+                                            <button
+                                                onClick={() => removeTrackItem(item.id)}
+                                                style={{ padding: "4px 8px" }}
+                                            >
+                                                Remove
+                                            </button>
                                         </div>
                                     ))
                                 ) : (
