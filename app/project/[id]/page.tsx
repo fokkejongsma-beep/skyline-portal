@@ -379,6 +379,34 @@ export default function ProjectDetailPage() {
         });
     };
 
+    const updateTrackItemLength = (itemId: string, newLengthMm: number) => {
+        setFormData({
+            ...formData,
+            lighting: {
+                ...formData.lighting,
+                track: {
+                    ...formData.lighting.track,
+                    items: formData.lighting.track.items.map((item) =>
+                        item.id === itemId ? { ...item, lengthMm: newLengthMm } : item,
+                    ),
+                },
+            },
+        });
+    };
+
+    const removeTrackItem = (itemId: string) => {
+        setFormData({
+            ...formData,
+            lighting: {
+                ...formData.lighting,
+                track: {
+                    ...formData.lighting.track,
+                    items: formData.lighting.track.items.filter((item) => item.id !== itemId),
+                },
+            },
+        });
+    };
+
     const width = Number(formData.layout.width) || 0;
     const height = Number(formData.layout.height) || 0;
 
@@ -1009,6 +1037,59 @@ export default function ProjectDetailPage() {
                             <div>
                                 Track total length: {formatLengthForSelectedUnit(trackLengthMm)}
                             </div>
+                            {formData.lighting.track.items.length > 0 && (
+                                <div style={{ marginTop: 12 }}>
+                                    <div style={{ fontWeight: 600, marginBottom: 8 }}>Track items</div>
+                                    <div style={{ display: "grid", gap: 8 }}>
+                                        {formData.lighting.track.items.map((item, index) => (
+                                            <div
+                                                key={item.id}
+                                                style={{
+                                                    border: "1px solid #e5e5e5",
+                                                    borderRadius: 6,
+                                                    padding: 8,
+                                                    background: "#fff",
+                                                }}
+                                            >
+                                                <div style={{ marginBottom: 6 }}>
+                                                    Track {index + 1}
+                                                </div>
+                                                <div
+                                                    style={{
+                                                        display: "flex",
+                                                        gap: 8,
+                                                        alignItems: "center",
+                                                        flexWrap: "wrap",
+                                                    }}
+                                                >
+                                                    <select
+                                                        value={item.lengthMm}
+                                                        onChange={(e) =>
+                                                            updateTrackItemLength(
+                                                                item.id,
+                                                                Number(e.target.value),
+                                                            )
+                                                        }
+                                                        style={{ padding: 8 }}
+                                                    >
+                                                        {TRACK_LENGTH_OPTIONS_MM.map((lengthMm) => (
+                                                            <option key={lengthMm} value={lengthMm}>
+                                                                {formatLengthForSelectedUnit(lengthMm)}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    <button
+                                                        onClick={() => removeTrackItem(item.id)}
+                                                        style={{ padding: "8px 12px" }}
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                             <div>Furtivo: {formData.lighting.furtivo.length}</div>
                         </div>
                     </div>
